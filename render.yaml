@@ -1,0 +1,66 @@
+# One-click deployment on Render (render.com): New > Blueprint > pick this GitHub repo.
+# Creates the database, the backend (FastAPI) and the website (Next.js) on the free plan.
+# Secrets are typed into Render's dashboard when asked, never committed to Git.
+# (The PS3 field app is not deployed: it is the offline, on-device part and runs on the volunteer's device.)
+
+databases:
+  - name: impactproof-db
+    plan: free
+    databaseName: impactproof
+    user: impactproof
+
+services:
+  - type: web
+    name: impactproof-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: DATABASE_URL
+        fromDatabase:
+          name: impactproof-db
+          property: connectionString
+      - key: APP_SECRET
+        generateValue: true
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: CLOUDINARY_FOLDER
+        value: impactproof
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: PUBLIC_APP_URL          # the website's address, used in QR codes
+        sync: false
+      - key: WEATHER_ENABLED
+        value: "true"
+
+  - type: web
+    name: impactproof-web
+    runtime: node
+    plan: free
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start -- -p $PORT
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: BACKEND_URL            # the backend's address; read when the site is built
+        sync: false
+      - key: NEXT_PUBLIC_HERO_VIDEO # optional: your own landing video (Cloudinary URL)
+        sync: false
+      - key: NEXT_PUBLIC_STORY_VIDEO
+        sync: false

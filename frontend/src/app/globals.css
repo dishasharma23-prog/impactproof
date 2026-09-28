@@ -1,0 +1,223 @@
+@import "tailwindcss";
+
+/* ImpactProof tokens. Warm paper, ink text, one deep-teal accent; verdict colours carry meaning.
+   (Token names are kept from the first theme: "ink" is the page, "paper" is the text colour.) */
+@theme {
+  --color-ink: #f6f4ee;
+  --color-surface: #ffffff;
+  --color-raised: #efece4;
+  --color-line: #e2ddd2;
+  --color-paper: #16181a;
+  --color-muted: #5b615c;
+  --color-faint: #8c918b;
+  --color-gold: #0f5f5c;
+  --color-gold-hover: #0b4a47;
+  --color-teal: #2a7f86;
+  --color-ok: #2e7d4f;
+  --color-review: #b7791f;
+  --color-bad: #b83a3a;
+  --color-unknown: #6b7280;
+  --color-rejected: #8f2f2a;
+
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
+  --radius-xl: 6px;
+  --radius-2xl: 8px;
+
+  /* one type system with the landing page: Outfit for headlines, Figtree for UI, DM Mono for metadata.
+     (the token is still called "serif" so existing pages pick up the display face without edits) */
+  --font-serif: "Outfit Variable", "Outfit", system-ui, sans-serif;
+  --font-sans: "Figtree Variable", "Figtree", system-ui, sans-serif;
+  --font-mono: "DM Mono", ui-monospace, monospace;
+}
+
+html { color-scheme: light; }
+
+/* Dark mode: the same tokens, re-mixed for a dark room. Switched with data-theme on <html>. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  /* the landing page's warm near-black, cream and teal */
+  --color-ink: #100904;
+  --color-surface: #17100a;
+  --color-raised: #21170f;
+  --color-line: rgb(244 232 216 / .13);
+  --color-paper: #f4e8d8;
+  --color-muted: #a99e91;
+  --color-faint: #6f665c;
+  --color-gold: #36d6b0;
+  --color-gold-hover: #5ee3c3;
+  --color-teal: #36d6b0;
+  --color-ok: #36d6b0;
+  --color-review: #e8a84e;
+  --color-bad: #ef7d63;
+  --color-unknown: #a99e91;
+  --color-rejected: #d4644e;
+}
+:root[data-theme="dark"] .grain::before { opacity: .12; }
+:root[data-theme="dark"] .leaflet-container { background: #1b1f20; }
+:root[data-theme="dark"] .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.85) contrast(.9); }
+:root[data-theme="dark"] .leaflet-control-attribution { background: rgb(15 17 18 / .8) !important; }
+:root[data-theme="dark"] .scroll-thin::-webkit-scrollbar-thumb { background: #3a4042; }
+body {
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font-family: var(--font-sans);
+  font-feature-settings: "tnum" 1, "cv11" 1;
+}
+::selection { background: var(--color-gold); color: #fff; }
+:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; }
+/* Instrument Serif has one weight; never fake-bold it */
+.font-serif { font-weight: 800 !important; letter-spacing: -0.035em; }
+
+/* verdict colors as a single custom property */
+.v-CORROBORATED { --v: var(--color-ok); }
+.v-NEEDS_REVIEW { --v: var(--color-review); }
+.v-SUSPICIOUS { --v: var(--color-bad); }
+.v-UNVERIFIABLE { --v: var(--color-unknown); }
+.v-REJECTED { --v: var(--color-rejected); }
+
+/* The verdict stamp: the one bold element on an evidence page */
+.stamp {
+  display: inline-block;
+  color: var(--v);
+  border: 2px solid var(--v);
+  border-radius: 4px;
+  padding: 0.45rem 0.95rem 0.4rem;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: clamp(0.95rem, 1.6vw, 1.15rem);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  line-height: 1.1;
+  transform: rotate(-2.5deg);
+  background: color-mix(in srgb, var(--v) 7%, transparent);
+  box-shadow: inset 0 0 0 2px var(--color-surface), inset 0 0 0 3px color-mix(in srgb, var(--v) 45%, transparent);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .stamp-press { animation: press 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+  @keyframes press {
+    from { transform: rotate(-10deg) scale(1.6); opacity: 0; }
+    to { transform: rotate(-2.5deg) scale(1); opacity: 1; }
+  }
+}
+
+.dot::before {
+  content: "";
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--v);
+  margin-right: 0.45rem;
+  vertical-align: 0.05rem;
+}
+
+/* before/after slider */
+.ba { position: relative; overflow: hidden; user-select: none; background: var(--color-raised); }
+.ba img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.ba .ba-before { clip-path: inset(0 calc(100% - var(--pos, 50%)) 0 0); }
+.ba .ba-handle { position: absolute; top: 0; bottom: 0; left: var(--pos, 50%); width: 2px; background: #fff;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.35); pointer-events: none; }
+.ba .ba-handle::after { content: "⇆"; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 34px; height: 34px; border-radius: 999px; background: #fff; color: #111; display: grid; place-items: center;
+  font-size: 15px; }
+.ba input[type="range"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: ew-resize; margin: 0; }
+
+/* leaflet on dark */
+.leaflet-container { background: #e9e6dd; font-family: var(--font-sans); }
+.leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--color-raised); color: var(--color-paper); }
+.leaflet-popup-content a { color: var(--color-gold); }
+.leaflet-control-attribution { background: rgb(255 255 255 / 0.8) !important; color: var(--color-muted) !important; }
+.leaflet-control-attribution a { color: var(--color-muted) !important; }
+
+.scroll-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+.scroll-thin::-webkit-scrollbar-thumb { background: #cfc9bc; border-radius: 3px; }
+
+@media print {
+  body { background: #fff; color: #111; }
+  .no-print { display: none !important; }
+  .print-plain { background: #fff !important; color: #111 !important; border-color: #ccc !important; }
+}
+
+/* subtle paper grain */
+.grain { position: relative; }
+.grain::before { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: .35;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.35 0 0 0 0 0.32 0 0 0 0 0.25 0 0 0 .06 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); }
+.grain > * { position: relative; z-index: 1; }
+
+/* the hero's easing, reused for menus */
+.ease-film { transition-timing-function: cubic-bezier(0.76, 0, 0.24, 1); }
+
+/* ---------- ImpactProof type system (from the landing page) ---------- */
+.t-label { font-family: var(--font-mono); font-size: 11px; line-height: 1.3; font-weight: 500; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--color-muted); }
+.t-meta { font-family: var(--font-mono); font-size: 12px; letter-spacing: .04em; }
+.t-display { font-family: var(--font-serif); font-weight: 800; font-size: clamp(2.1rem, 4.2vw, 3.5rem); line-height: .98; letter-spacing: -0.035em; }
+.t-title { font-family: var(--font-serif); font-weight: 750; font-size: clamp(1.5rem, 2.5vw, 2.05rem); line-height: 1.02; letter-spacing: -0.03em; }
+.t-num { font-family: var(--font-serif); font-weight: 700; line-height: .95; letter-spacing: -0.04em; font-variant-numeric: lining-nums tabular-nums; }
+
+/* photographs are evidence: sharp, quiet, revealed gently */
+.photo { background: var(--color-raised); overflow: hidden; }
+.photo img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .6s cubic-bezier(.2,.7,.2,1), opacity .5s; }
+a:hover .photo img, button:hover .photo img { transform: scale(1.025); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .page-in { animation: page-in .5s cubic-bezier(.2,.7,.2,1) both; }
+  @keyframes page-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+}
+
+/* printed documents (impact brief, donor page) stay on paper in either theme */
+.paper-scope {
+  --color-ink: #f6f4ee; --color-surface: #ffffff; --color-raised: #ebe7dd; --color-line: #d9d5ca;
+  --color-paper: #1b1d1c; --color-muted: #5b615c; --color-faint: #8a8e8a;
+  color-scheme: light;
+}
+
+/* =====================================================================
+   EDITORIAL SYSTEM (landing page, phase 1)
+   Scoped to .ed so the app pages keep their current look until they adopt it.
+   Change the brand here: every editorial component reads these variables.
+   ===================================================================== */
+.ed {
+  --ed-bg: #100904;
+  --ed-bg-2: #17100a;
+  --ed-cream: #f4e8d8;
+  --ed-muted: #a99e91;
+  --ed-faint: #6f665c;
+  --ed-rule: rgb(244 232 216 / .14);
+  --ed-rule-strong: rgb(244 232 216 / .32);
+  --ed-accent: #36d6b0;
+  --ed-display: "Outfit Variable", "Outfit", system-ui, sans-serif;
+  --ed-sans: "Figtree Variable", "Figtree", system-ui, sans-serif;
+  --ed-mono: "DM Mono", ui-monospace, monospace;
+  --ed-ease: cubic-bezier(.22, 1, .36, 1);
+  --ed-gutter: clamp(20px, 4.5vw, 72px);
+  background: var(--ed-bg);
+  color: var(--ed-cream);
+  font-family: var(--ed-sans);
+  -webkit-font-smoothing: antialiased;
+}
+/* app components placed inside the editorial page (e.g. the early-access form) pick up its palette */
+.ed {
+  --color-ink: #100904; --color-surface: #17100a; --color-raised: #21170f; --color-line: rgb(244 232 216 / .16);
+  --color-paper: #f4e8d8; --color-muted: #a99e91; --color-faint: #6f665c; --color-gold: #36d6b0; --color-bad: #ef7d63;
+}
+.ed ::selection { background: var(--ed-accent); color: var(--ed-bg); }
+.ed-display { font-family: var(--ed-display); font-weight: 800; letter-spacing: -.035em; line-height: .9; }
+/* emphasis inside a headline: colour, not italics */
+.ed-em { color: var(--ed-accent); }
+.ed-soft { color: rgb(244 232 216 / .45); }
+.ed-mono { font-family: var(--ed-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+.ed-label { font-family: var(--ed-mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--ed-muted); }
+.ed-body { font-family: var(--ed-sans); font-weight: 500; font-size: clamp(15px, 1.15vw, 18px); line-height: 1.55; letter-spacing: -.01em; color: rgb(244 232 216 / .8); }
+.ed-rule { height: 1px; background: var(--ed-rule); transform-origin: left; }
+.ed-rule-dashed { height: 1px; background-image: linear-gradient(90deg, var(--ed-rule-strong) 50%, transparent 0); background-size: 8px 1px; }
+.ed-gutter { padding-left: var(--ed-gutter); padding-right: var(--ed-gutter); }
+.ed-link { position: relative; }
+.ed-link::after { content: ""; position: absolute; left: 0; right: 0; bottom: -3px; height: 1px; background: currentColor;
+  transform: scaleX(0); transform-origin: right; transition: transform .5s var(--ed-ease); }
+.ed-link:hover::after { transform: scaleX(1); transform-origin: left; }
+.ed-grain { pointer-events: none; position: fixed; inset: 0; z-index: 60; opacity: .07; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); }
+@media (prefers-reduced-motion: reduce) { .ed-link::after { transition: none; } }

@@ -1,0 +1,11 @@
+qdrant-edge-py==0.8.0
+qdrant-client
+fastembed
+fastapi
+uvicorn[standard]
+python-multipart
+httpx
+pillow
+piexif
+pytest
+cryptography

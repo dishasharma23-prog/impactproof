@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>ImpactProof Field</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect x='22' y='22' width='56' height='56' transform='rotate(45 50 50)' fill='%230f5f5c'/></svg>">
+  <script>document.documentElement.dataset.theme = (function(){ try { return localStorage.getItem("field-theme") || "dark"; } catch (e) { return "dark"; } })();</script>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><span class="mark"></span><span><small>ImpactProof Field</small><span id="deviceName">Field device</span></span></div>
+    <button id="connPill" class="pill" type="button" aria-live="polite">Checking…</button>
+    <button id="syncBtn" class="btn small" type="button">Sync now</button>
+    <button id="themeBtn" class="icon-btn" type="button" aria-label="Switch light or dark mode">&#9788;</button>
+  </header>
+  <div class="strip" aria-label="Device status">
+    <span><b>NET</b> <i id="sNet">—</i></span>
+    <span><b>GPS</b> <i id="sGps">—</i></span>
+    <span><b>SYNC</b> <i id="sSync">—</i></span>
+    <span><b>TIME</b> <i id="sTime">—</i></span>
+    <span id="sBattWrap"><b>BATT</b> <i id="sBatt">—</i></span>
+  </div>
+  <div id="banner" class="banner" hidden></div>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" data-tab="capture" aria-selected="true">Capture</button>
+    <button role="tab" data-tab="search">Search</button>
+    <button role="tab" data-tab="memory">Memory</button>
+    <button role="tab" data-tab="sync">Sync <span id="conflictBadge" class="badge" hidden></span></button>
+    <button role="tab" data-tab="activity">Activity</button>
+  </nav>
+
+  <main>
+    <!-- CAPTURE -->
+    <section id="tab-capture" class="tab">
+      <div class="card">
+        <h2>Photo</h2>
+        <div class="camera">
+          <video id="video" playsinline muted></video>
+          <img id="preview" alt="" hidden>
+          <div id="camOff" class="cam-off">
+            <button id="camStart" class="btn" type="button">Start camera</button>
+            <label class="btn ghost">Choose a photo<input id="fileInput" type="file" accept="image/*" hidden></label>
+          </div>
+          <span id="gps" class="gps">Location: waiting…</span>
+        </div>
+        <div class="row">
+          <input id="caption" placeholder="What does it show? e.g. drain blocked with plastic" aria-label="Caption">
+          <input id="site" list="siteList" placeholder="Site" aria-label="Site">
+          <datalist id="siteList"></datalist>
+        </div>
+        <label class="check"><input type="checkbox" id="capPrivate"> Keep on this device only</label>
+        <div class="actions">
+          <button id="shoot" class="btn" type="button" disabled>Save photo</button>
+          <button id="camStop" class="btn ghost" type="button" hidden>Stop camera</button>
+        </div>
+        <p id="capResult" class="result" aria-live="polite"></p>
+      </div>
+
+      <div class="grid2">
+        <form id="noteForm" class="card">
+          <h2>Field note</h2>
+          <textarea id="noteText" rows="3" placeholder="e.g. Saplings near the east gate need watering by Friday" aria-label="Note"></textarea>
+          <input id="noteSite" list="siteList" placeholder="Site (optional)" aria-label="Site">
+          <label class="check"><input type="checkbox" id="notePrivate"> Keep on this device only</label>
+          <button class="btn" type="submit">Save note</button>
+          <p id="noteResult" class="result" aria-live="polite"></p>
+        </form>
+        <form id="factForm" class="card">
+          <h2>Site fact</h2>
+          <p class="hint">A shared, updatable number or status. The same name means the same record on every device, so if two people change it offline, you'll be asked which is right.</p>
+          <input id="factKey" placeholder="e.g. Library lawn: bags collected" aria-label="Fact name">
+          <input id="factValue" placeholder="e.g. 14" aria-label="Value">
+          <button class="btn" type="submit">Save fact</button>
+          <p id="factResult" class="result" aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
+
+    <!-- SEARCH -->
+    <section id="tab-search" class="tab" hidden>
+      <form id="searchForm" class="card">
+        <div class="searchbar">
+          <input id="q" placeholder="Ask your device, e.g. where was the blocked drain?" aria-label="Search">
+          <button class="btn" type="submit">Search</button>
+        </div>
+        <div class="seg" role="radiogroup" aria-label="Search mode">
+          <label><input type="radio" name="mode" value="all" checked> Everything</label>
+          <label><input type="radio" name="mode" value="semantic"> Meaning</label>
+          <label><input type="radio" name="mode" value="keyword"> Exact words</label>
+          <label><input type="radio" name="mode" value="photos"> What photos show</label>
+        </div>
+      </form>
+      <p id="searchMeta" class="meta"></p>
+      <ol id="results" class="list"></ol>
+    </section>
+
+    <!-- MEMORY -->
+    <section id="tab-memory" class="tab" hidden>
+      <div id="memStats" class="stats"></div>
+      <div class="filters" id="memFilters">
+        <select id="fKind" aria-label="Kind"><option value="">All kinds</option><option value="capture">Photos</option><option value="note">Notes</option><option value="fact">Facts</option><option value="hq_site">HQ sites</option><option value="hq_evidence">HQ evidence</option></select>
+        <select id="fOrigin" aria-label="Origin"><option value="">From anywhere</option><option value="local">This device</option><option value="peer">Other devices</option><option value="hq">ImpactProof HQ</option></select>
+        <select id="fState" aria-label="Sync state"><option value="">Any sync state</option><option value="pending">Waiting to sync</option><option value="synced">Synced</option><option value="local_only">Stays on device</option><option value="skipped">Not sent (duplicate)</option><option value="conflict">Conflict</option></select>
+      </div>
+      <ol id="memList" class="list"></ol>
+    </section>
+
+    <!-- SYNC -->
+    <section id="tab-sync" class="tab" hidden>
+      <div class="card" id="volCard">
+        <h2>Volunteer</h2>
+        <div id="volSignedIn" hidden>
+          <p class="big" id="volName"></p>
+          <p class="meta" id="volMeta"></p>
+          <button id="volOut" class="btn ghost small" type="button">Sign out</button>
+        </div>
+        <form id="volForm">
+          <p class="hint">Sign in with the phone number your coordinator registered and the 6-digit pairing code. Needed once, while online. Until then, photos stay on this device.</p>
+          <div class="row">
+            <input id="volPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="Phone number, e.g. +91 98765 43210" aria-label="Phone number" required>
+            <input id="volCode" inputmode="numeric" pattern="[0-9 ]{6,7}" maxlength="7" placeholder="Pairing code" aria-label="Pairing code" required>
+          </div>
+          <div class="actions"><button class="btn" type="submit">Sign in</button></div>
+          <p class="result" id="volResult"></p>
+        </form>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <h2>Connection</h2>
+          <p id="connDetail" class="big"></p>
+          <label class="switch"><input type="checkbox" id="offlineToggle"> Simulate no signal</label>
+          <div class="seg" role="radiogroup" aria-label="Connection type">
+            <label><input type="radio" name="net" value="wifi" checked> Wi-Fi</label>
+            <label><input type="radio" name="net" value="mobile"> Mobile data</label>
+          </div>
+          <label class="check"><input type="checkbox" id="mediaMobile"> Send photos over mobile data</label>
+          <p class="hint">On mobile data, details and notes sync right away; photo files wait for Wi-Fi.</p>
+          <p id="lastSync" class="meta"></p>
+        </div>
+        <div class="card">
+          <h2>What syncs</h2>
+          <ul id="policy" class="policy"></ul>
+          <p id="storage" class="meta"></p>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Conflicts</h2>
+        <p class="hint">Facts changed on two devices while offline. Pick the right value; your choice is logged and synced.</p>
+        <ol id="conflicts" class="list"></ol>
+      </div>
+      <div class="card">
+        <h2>Waiting to sync</h2>
+        <ol id="queue" class="list compact"></ol>
+      </div>
+    </section>
+
+    <!-- ACTIVITY -->
+    <section id="tab-activity" class="tab" hidden>
+      <ol id="activity" class="timeline"></ol>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
