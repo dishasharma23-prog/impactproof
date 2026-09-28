@@ -39,8 +39,10 @@ class Settings(BaseSettings):
 settings = Settings()
 
 # Hosting providers hand out "postgres://..." addresses; SQLAlchemy needs "postgresql://".
-if settings.DATABASE_URL.startswith("postgres://"):
-    settings.DATABASE_URL = "postgresql://" + settings.DATABASE_URL[len("postgres://"):]
+for _p in ("postgres://", "postgresql://"):
+    if settings.DATABASE_URL.startswith(_p):
+        settings.DATABASE_URL = "postgresql+psycopg2://" + settings.DATABASE_URL[len(_p):]
+        break
 
 Path(settings.STORAGE_DIR).mkdir(parents=True, exist_ok=True)
 (Path(settings.STORAGE_DIR) / "originals").mkdir(parents=True, exist_ok=True)
