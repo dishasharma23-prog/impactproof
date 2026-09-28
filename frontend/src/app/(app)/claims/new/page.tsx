@@ -19,7 +19,7 @@ export default function NewClaimPage() {
     if (!t) return setError("Write the claim first.");
     setBusy(true);
     try {
-      const c = await postJSON<{ id: number }>("/api/claims/", { text: t, project_id: project?.id });
+      const c = await postJSON<{ id: number }>("/api/claims", { text: t, project_id: project?.id });
       router.push(`/claims/${c.id}`);
     } catch (err: any) { setError(err.message); setBusy(false); }
   }

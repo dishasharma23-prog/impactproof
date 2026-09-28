@@ -12,7 +12,7 @@ export default function ClaimsPage() {
   const [claims, setClaims] = useState<ClaimRow[] | null>(null);
   const [error, setError] = useState("");
   useEffect(() => {
-    if (project) api<ClaimRow[]>(`/api/claims/?project_id=${project.id}`).then(setClaims).catch((e) => setError(e.message));
+    if (project) api<ClaimRow[]>(`/api/claims?project_id=${project.id}`).then(setClaims).catch((e) => setError(e.message));
   }, [project]);
 
   if (error) return <ErrorBox message={error} />;

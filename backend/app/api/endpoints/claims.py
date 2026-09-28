@@ -66,7 +66,7 @@ def claim_light(db, c: domain.Claim, evidence=None) -> dict:
     return {"id": c.id, "text": c.text, "project_id": c.project_id, "created_at": iso(c.created_at),
             "evidence_count": len(ev), "support": claim_service.support(ev), "public_token": c.public_token}
 
-
+@router.get("", include_in_schema=False)
 @router.get("/")
 def get_claims(project_id: Optional[int] = None, db: Session = Depends(get_db)):
     q = db.query(domain.Claim).order_by(domain.Claim.created_at.desc())
@@ -74,7 +74,7 @@ def get_claims(project_id: Optional[int] = None, db: Session = Depends(get_db)):
         q = q.filter(domain.Claim.project_id == project_id)
     return [claim_light(db, c) for c in q.all()]
 
-
+@router.post("", include_in_schema=False)
 @router.post("/")
 def create_claim(claim: ClaimCreate, db: Session = Depends(get_db)):
     project_id = claim.project_id or pipeline.default_project(db).id
