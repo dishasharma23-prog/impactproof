@@ -67,6 +67,12 @@ app.mount("/media", StaticFiles(directory=str(pipeline.ORIGINALS)), name="media"
 
 
 
+@app.get("/api/ping")
+def ping():
+    """Instant liveness check for the host and uptime monitors: touches nothing external."""
+    return {"ok": True}
+
+
 @app.get("/api/health")
 def health_check(db: Session = Depends(get_db)):
     db_status = "ok"

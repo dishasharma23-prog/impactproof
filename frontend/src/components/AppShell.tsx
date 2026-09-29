@@ -69,7 +69,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <Conn on={health.gemini === "configured"} label="Gemini" />
                 <Conn on={health.qdrant === "ok"} label="Qdrant" />
               </>
-            ) : <span className="text-bad">Backend offline</span>}
+            ) : <span className="text-faint">Waking server…</span>}
           </div>
         </div>
       </header>

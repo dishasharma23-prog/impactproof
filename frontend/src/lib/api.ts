@@ -193,13 +193,28 @@ export interface Support {
 
 export class ApiError extends Error {}
 
+const OFFLINE = "Can't reach the server right now. Please refresh in a minute.";
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// The free host puts the backend to sleep when idle; waking it takes up to about a minute.
+// Reads (GET) are retried quietly while it wakes; writes are never retried, so nothing is sent twice.
 export async function api<T = any>(path: string, init: RequestInit = {}): Promise<T> {
-  let res: Response;
-  try {
-    res = await fetch(`${API}${path}`, { cache: "no-store", ...init });
-  } catch {
-    throw new ApiError("Can't reach the backend. Is it running on port 8000?");
+  const method = (init.method || "GET").toUpperCase();
+  const retryable = method === "GET";
+  const deadline = Date.now() + 90_000;
+  let res: Response | null = null;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      res = await fetch(`${API}${path}`, { cache: "no-store", ...init });
+      if (!(retryable && [502, 503, 504].includes(res.status))) break;
+    } catch {
+      res = null;
+      if (!retryable) throw new ApiError(OFFLINE);
+    }
+    if (Date.now() > deadline) break;
+    await sleep(Math.min(2000 + attempt * 1500, 8000));
   }
+  if (!res) throw new ApiError(OFFLINE);
   let data: any = null;
   try {
     data = await res.json();
@@ -207,7 +222,7 @@ export async function api<T = any>(path: string, init: RequestInit = {}): Promis
     /* empty body */
   }
   if (!res.ok) {
-    if (data === null && res.status >= 500) throw new ApiError("Can't reach the backend. Is it running on port 8000?");
+    if (data === null && res.status >= 500) throw new ApiError(OFFLINE);
     let msg = data?.detail ?? `Request failed (${res.status})`;
     if (Array.isArray(msg)) msg = msg.map((d: any) => String(d.msg || d).replace(/^Value error, /, "")).join(" ");
     throw new ApiError(String(msg));

@@ -51,8 +51,11 @@ async def upload_evidence(
         capture = {"token": capture_token, "gps_lat": gps_lat, "gps_lng": gps_lng, "gps_accuracy": gps_accuracy,
                    "client_time": client_time, "tz_offset_min": tz_offset_min}
     try:
-        e = pipeline.ingest(db, data, file.filename or "upload.jpg", file.content_type, project_id, site_id,
-                            capture, actor=uploader or "uploader")
+        # Checking a photo calls Cloudinary, Gemini and the weather service (10 to 30 s). Run it in a worker
+        # thread so the server keeps answering other requests, including the host's health checks, meanwhile.
+        from starlette.concurrency import run_in_threadpool
+        e = await run_in_threadpool(pipeline.ingest, db, data, file.filename or "upload.jpg", file.content_type,
+                                    project_id, site_id, capture, actor=uploader or "uploader")
     except pipeline.IngestError as ex:
         raise HTTPException(status_code=400, detail=str(ex))
     if volunteer:
