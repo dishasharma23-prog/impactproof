@@ -301,3 +301,23 @@ $("#volOut").addEventListener("click", async () => {
   if (!confirm("Sign out? Photos will stay on this device until someone signs in.")) return;
   await api("/api/pair", { method: "DELETE" }); toast("Signed out"); refresh();
 });
+
+// Scanning the QR on ImpactProof's Volunteers page opens this app as ?vol=<phone>&code=<code>:
+// sign in straight away, then remove the code from the address bar.
+(async function signInFromLink() {
+  const qs = new URLSearchParams(location.search);
+  const phone = qs.get("vol"), code = qs.get("code");
+  if (!phone || !code) return;
+  history.replaceState(null, "", location.pathname);
+  show("sync");
+  $("#volPhone").value = phone; $("#volCode").value = code;
+  toast("Signing in…");
+  try {
+    const v = await post("/api/pair", { phone, code: code.replace(/\s/g, "") });
+    $("#volCode").value = "";
+    toast(`Signed in as ${v.name}`); refresh();
+  } catch (x) {
+    $("#volForm").hidden = false; $("#volSignedIn").hidden = true;
+    $("#volResult").textContent = x.message; toast(x.message);
+  }
+})();

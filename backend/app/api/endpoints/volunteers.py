@@ -1,6 +1,9 @@
 from typing import Optional
 
+import qrcode
+import qrcode.image.svg
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -100,3 +103,17 @@ def me(key: str, db: Session = Depends(get_db)):
     if not v:
         raise HTTPException(status_code=401, detail="This device is not paired.")
     return vs.to_dict(v, db)
+
+
+class QrIn(BaseModel):
+    data: str
+
+
+@router.post("/volunteers/qr.svg")
+def sign_in_qr(body: QrIn):
+    """QR code for the sign-in link shown on the Volunteers page. Sent in the body, not the URL, so the
+    single-use pairing code inside it never lands in access logs."""
+    if not body.data.startswith(("http://", "https://")) or len(body.data) > 500:
+        raise HTTPException(status_code=400, detail="Give the field app's address, starting with https://")
+    img = qrcode.make(body.data, image_factory=qrcode.image.svg.SvgPathImage, box_size=10, border=2)
+    return Response(img.to_string(), media_type="image/svg+xml", headers={"Cache-Control": "no-store"})

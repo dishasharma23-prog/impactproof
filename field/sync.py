@@ -64,7 +64,7 @@ class SyncEngine:
     @property
     def client(self) -> QdrantClient:
         if self._client is None:
-            self._client = QdrantClient(url=self.cfg.qdrant_url, api_key=self.cfg.qdrant_api_key or None, timeout=3)
+            self._client = QdrantClient(url=self.cfg.qdrant_url, api_key=self.cfg.qdrant_api_key or None, timeout=10)
         return self._client
 
     def connectivity(self, force=False) -> dict:

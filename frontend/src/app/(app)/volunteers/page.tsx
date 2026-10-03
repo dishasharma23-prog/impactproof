@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { SectionHeading } from "@/components/system";
 import { btn, btnGhost, ErrorBox, input, label, Loading, PageHeader, Toast } from "@/components/ui";
-import { api, fmtUtc, postJSON } from "@/lib/api";
+import { API, api, fmtUtc, postJSON } from "@/lib/api";
 import { useProject } from "@/lib/project";
 
 interface Volunteer {
@@ -20,6 +20,23 @@ export default function VolunteersPage() {
   const [code, setCode] = useState<{ name: string; phone: string; code: string } | null>(null);
   const [toast, setToast] = useState("");
   const flash = (m: string) => { setToast(m); setTimeout(() => setToast(""), 3000); };
+
+  // Where the field app runs (the edge device). The QR opens it on the volunteer's phone and signs in.
+  const [fieldUrl, setFieldUrl] = useState("");
+  const [qr, setQr] = useState("");
+  useEffect(() => { try { setFieldUrl(localStorage.getItem("ip.fieldUrl") || ""); } catch {} }, []);
+  const saveFieldUrl = (v: string) => { setFieldUrl(v); try { localStorage.setItem("ip.fieldUrl", v); } catch {} };
+  useEffect(() => {
+    const base = fieldUrl.trim().replace(/\/+$/, "");
+    if (!code || !/^https?:\/\/\S+$/.test(base)) { setQr(""); return; }
+    const link = `${base}/?vol=${encodeURIComponent(code.phone)}&code=${code.code}`;
+    let url = "";
+    fetch(`${API}/api/volunteers/qr.svg`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: link }) })
+      .then((r) => (r.ok ? r.text() : Promise.reject()))
+      .then((svg) => { url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" })); setQr(url); })
+      .catch(() => setQr(""));
+    return () => { if (url) URL.revokeObjectURL(url); };
+  }, [code, fieldUrl]);
 
   const load = useCallback(() => {
     if (!project) return;
@@ -74,12 +91,28 @@ export default function VolunteersPage() {
           {code ? (
             <div>
               <p className="text-sm text-muted">For <b className="text-paper">{code.name}</b> · <span className="t-meta">{code.phone}</span></p>
-              <p className="t-num text-7xl tracking-[.12em] mt-4">{code.code.slice(0, 3)} {code.code.slice(3)}</p>
+              <div className="mt-4 flex flex-wrap items-center gap-8">
+                <p className="t-num text-7xl tracking-[.12em]">{code.code.slice(0, 3)} {code.code.slice(3)}</p>
+                {qr && (
+                  <figure className="text-center">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={qr} alt="Scan to open the field app and sign in" className="w-40 h-40 bg-white p-2 rounded" />
+                    <figcaption className="t-meta text-[11px] text-muted mt-2 uppercase">Scan to sign in</figcaption>
+                  </figure>
+                )}
+              </div>
+              {qr && <p className="text-sm text-paper/85 mt-4">Scan with the volunteer&apos;s phone: it opens the field app and signs in, no typing.</p>}
               <ol className="mt-6 space-y-1.5 text-sm text-paper/85 list-decimal pl-5">
                 <li>On the volunteer&apos;s phone, open the field app and go to <b>Sync</b>.</li>
                 <li>Under <b>Volunteer</b>, enter this phone number and the code.</li>
                 <li>The code works once and expires in 48 hours.</li>
               </ol>
+              <div className="mt-6 max-w-md">
+                <label className={label} htmlFor="fu">Field app address (for the QR)</label>
+                <input id="fu" className={input} value={fieldUrl} onChange={(e) => saveFieldUrl(e.target.value)}
+                  placeholder="https://192.168.1.102:8101" inputMode="url" spellCheck={false} />
+                <p className="text-xs text-faint mt-1.5">The address the field app prints when it starts. The phone must be on the same Wi-Fi or hotspot as the device running it.</p>
+              </div>
               <p className="text-xs text-faint mt-4">Shown once. Send it to the volunteer directly; ImpactProof only keeps a hash of it.</p>
             </div>
           ) : <p className="text-sm text-muted">Add a volunteer, or make a new code for someone below. The code appears here.</p>}
