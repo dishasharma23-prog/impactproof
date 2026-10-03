@@ -1,13 +1,82 @@
-# ImpactProof
+# ImpactProof Field
 
-**Evidence you can trace. Impact you can trust.**
+**Offline semantic memory for NGO field workers, built on Qdrant Edge. Capture and search with no
+signal; sync intelligently when it returns. Edge → cloud → edge.**
 
-ImpactProof turns field photos from NGOs and sustainability teams into verified evidence, and
-turns verified evidence into claims donors can check for themselves. Built for Code Cubicle 6.0,
-Problem Statement 02 (Cloudinary).
+Code Cubicle 6.0 · **Problem Statement 03 (Qdrant Edge)**
 
-**Field app (Problem Statement 03, Qdrant Edge):** see [field/README.md](field/README.md), an
-offline-first companion with on-device semantic memory that syncs into ImpactProof.
+-  **Demo video:** VIDEO_LINK_HERE
+-  **Live HQ (the cloud side):** https://impactproof-web.onrender.com (free hosting: the first load can take up to a minute)
+-  **Field app (the edge side):** [`field/`](field/README.md). It runs on the volunteer's device, so it is shown in the video
+  and can be run locally in three commands (below).
+
+## Why the field app is not a website
+
+Field workers in villages, forests and flood zones spend most of the day without internet. A web app
+would stop working exactly when they need it. So the field app runs **on the device**: every photo, note
+and site fact is embedded by on-device models and stored in a **Qdrant Edge shard** on that device.
+Search works in milliseconds with the network switched off (airplane mode in the video). When a
+connection returns, the device syncs to **Qdrant Cloud** and to ImpactProof HQ.
+
+## How it meets PS3
+
+| PS3 goal | ImpactProof Field |
+|---|---|
+| Local, on-device vector memory | A Qdrant Edge `EdgeShard` per device with three named vectors: `text` (bge-small, 384), `clip` (CLIP ViT-B/32, 512) and `bm25` (sparse). Survives restarts. |
+| Works offline, low latency | Models run on the device (fastembed, ONNX). No network needed for capture or search; searches take a few milliseconds. |
+| Semantic retrieval | Hybrid search (meaning + keywords, reciprocal-rank fusion), meaning only, exact words, and **what photos show** (CLIP text-to-image). "clogged water outlet" finds "drain blocked with plastic bottles". |
+| Sync with a central server | Points sync to a `field_memory` collection on Qdrant Cloud **with the same vectors, never re-embedded**. Other devices pull what is new; deletes travel as tombstones. |
+| Intelligent sync policy | Personal data (phone numbers, emails, ID numbers) stays on the device; near-duplicate photos (CLIP ≥ 0.95) are not sent; facts go first, then notes, then photos; photo files wait for Wi-Fi on mobile data; a memory budget trims other devices' items first. |
+| Conflict resolution | Site facts are versioned. If two volunteers change the same fact offline, the device that syncs second is asked: keep mine, keep theirs, or merge. Nothing is silently overwritten, and every decision is logged. |
+| Edge-to-cloud AI workflow | Photos upload to HQ signed with the volunteer's device key; HQ verifies them (Cloudinary, Gemini, nine checks). The verdict and HQ's verified evidence **flow back down** into Qdrant Edge, so the next volunteer can search verified proof offline. |
+| Real-world usefulness | Real volunteers register by phone number and sign in once with a single-use code; every photo is attributed ("Captured by Disha · +91 ••••• 73264"). Unknown or revoked devices are refused. |
+
+## Edge → cloud → edge
+
+1. **No signal.** A volunteer takes a photo and a note. The device embeds them on the spot and they are searchable instantly.
+2. **Signal returns.** The sync policy decides what leaves the device; items sync to Qdrant Cloud and conflicts are caught.
+3. **HQ verifies.** Photos reach ImpactProof HQ signed by the volunteer. Cloudinary stores them, Gemini and nine checks give a verdict.
+4. **Back to the edge.** Verdicts and verified evidence flow back into every device's Qdrant Edge memory for offline search.
+5. **Proof.** The NGO publishes a claim backed only by corroborated photos; donors scan a QR code to check it.
+
+## Try the field app (about 5 minutes, no accounts needed)
+
+```
+python -m venv .venv-field
+.venv-field\Scripts\activate            (macOS/Linux: source .venv-field/bin/activate)
+pip install -r field/requirements.txt
+python -m field.setup_models             (downloads the on-device models once, about 450 MB)
+python -m field --device demo --port 8101
+```
+
+Open http://localhost:8101, add a note and a photo, then in **Sync** tick **Simulate no signal** (or turn on
+airplane mode) and use **Search**. Syncing between devices, HQ uploads, real phones over a hotspot and the
+conflict demo are described in [field/README.md](field/README.md).
+
+## Architecture
+
+```
+Volunteer's phone ──(local hotspot, https)──▶ ImpactProof Field (on the edge device)
+                                               ├── Qdrant Edge shard: text + clip + bm25
+                                               ├── on-device models: bge-small, CLIP, BM25
+                                               ├── sync policy: privacy, duplicates, priority, Wi-Fi, conflicts
+                                               └── when online ──▶ Qdrant Cloud (field_memory, shared memory)
+                                                               └──▶ ImpactProof HQ (FastAPI + Postgres + Next.js)
+                                                                     ├── Cloudinary: storage, fingerprint, face blur
+                                                                     ├── Gemini: what is really in the photo
+                                                                     └── nine checks → verdict ──▶ back to the devices
+```
+
+Qdrant Edge has no build for phone processors yet and cannot run in a browser, so a laptop (or any small
+computer) acts as the team's edge device and phones connect to it over a local hotspot as camera and
+screen. A native phone app is the next step.
+
+---
+
+# ImpactProof HQ (the cloud side)
+
+**Evidence you can trace. Impact you can trust.** HQ turns field photos into verified evidence and
+verified evidence into claims donors can check for themselves.
 
 ## The problem
 
@@ -81,7 +150,7 @@ verified photos per goal, e.g. "38 corroborated photos supporting SDG 15, Life o
 - Campaign images in three formats with caption and an evidence stamp, built as derived URLs.
   The original is never modified.
 
-## Architecture
+## HQ architecture
 
 ```
 Browser ── Next.js 16 (frontend/) ──/api, /media──▶ FastAPI (backend/app)
