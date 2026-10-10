@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.api.endpoints import claims, evidence, projects, volunteers
+from app.api.endpoints import claims, donations, evidence, projects, volunteers
 from app.core.config import cloudinary_enabled, settings
 from app.db.database import SessionLocal, ensure_schema, get_db
 from app.models import domain
@@ -62,6 +62,7 @@ app.include_router(claims.public_router, prefix="/api", tags=["public"])
 app.include_router(evidence.router, prefix="/api", tags=["evidence"])
 app.include_router(projects.router, prefix="/api", tags=["projects"])
 app.include_router(volunteers.router, prefix="/api", tags=["volunteers"])
+app.include_router(donations.router, prefix="/api", tags=["donations"])
 app.mount("/media", StaticFiles(directory=str(pipeline.ORIGINALS)), name="media")
 
 

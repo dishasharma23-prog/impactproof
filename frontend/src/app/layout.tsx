@@ -13,8 +13,13 @@ import "leaflet/dist/leaflet.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ImpactProof",
-  description: "Evidence you can trace. Impact you can trust.",
+  title: { default: "ImpactProof · Evidence you can trace", template: "%s · ImpactProof" },
+  description: "Offline-first field evidence for NGOs: volunteers capture and search proof with no signal (Qdrant Edge), every photo is verified, and donors fund work that is proven.",
+  openGraph: {
+    title: "ImpactProof · Evidence you can trace. Impact you can trust.",
+    description: "Field proof that works with no signal, verified photo by photo, with donations released on proof.",
+    type: "website",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

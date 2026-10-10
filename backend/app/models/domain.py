@@ -16,6 +16,8 @@ class Project(Base):
     start_date = Column(Date, nullable=True)          # project period, used by the date check
     end_date = Column(Date, nullable=True)
     sdgs = Column(JSON, nullable=True)                # UN Sustainable Development Goals this project serves
+    upi_id = Column(String, nullable=True)            # where donors pay (UPI VPA), shown on public claim pages
+    upi_name = Column(String, nullable=True)          # payee name shown in the donor's UPI app
     created_at = Column(DateTime, default=datetime.utcnow)
     sites = relationship('Site', back_populates='project')
 
@@ -208,3 +210,23 @@ class Volunteer(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     paired_at = Column(DateTime, nullable=True)
     last_upload_at = Column(DateTime, nullable=True)
+
+
+class Donation(Base):
+    """Money pledged to a specific claim. Paid by UPI straight to the NGO; the NGO confirms it arrived.
+    A donation is "released on proof" once the claim it funds is supported by verified photos."""
+    __tablename__ = 'donations'
+    id = Column(Integer, primary_key=True, index=True)
+    claim_id = Column(Integer, ForeignKey('claims.id'), index=True)
+    project_id = Column(Integer, ForeignKey('projects.id'), nullable=True)
+    donor_name = Column(String)
+    amount = Column(Integer)                          # whole rupees
+    method = Column(String, default='upi')            # upi | demo
+    utr = Column(String, nullable=True)               # UPI reference number the donor reports
+    status = Column(String, default='pending')        # pending | confirmed | rejected
+    receipt_token = Column(String, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    confirmed_at = Column(DateTime, nullable=True)
+    confirmed_by = Column(String, nullable=True)
+
+    claim = relationship('Claim')

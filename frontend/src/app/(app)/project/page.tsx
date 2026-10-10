@@ -117,6 +117,8 @@ function ProjectPage() {
         <div><button className={btn}>Save project</button></div>
       </form>
 
+      <Payments projectId={project.id} onSaved={flash} />
+
       <section className="mt-16">
         <h2 className="font-serif text-3xl">Sites</h2>
         <p className="text-muted mt-2 mb-5">A photo passes the location check when it was taken inside a site&apos;s circle. Click the map to place a new site.</p>
@@ -183,5 +185,35 @@ function SiteRow({ site, onSave, onDelete }: { site: Site; onSave: (s: Site) => 
         <button type="button" className={btnDanger} onClick={() => onDelete(site)}>Remove</button>
       </div>
     </li>
+  );
+}
+
+/** Where donors pay. Only the UPI ID and payee name are stored: no keys, no card data. */
+function Payments({ projectId, onSaved }: { projectId: number; onSaved: (m: string) => void }) {
+  const [upi, setUpi] = useState(""); const [name, setName] = useState(""); const [err, setErr] = useState("");
+  useEffect(() => {
+    api<{ upi_id: string | null; upi_name: string | null }>(`/api/projects/${projectId}/payments`)
+      .then((p) => { setUpi(p.upi_id || ""); setName(p.upi_name || ""); }).catch(() => {});
+  }, [projectId]);
+  async function save(e: React.FormEvent) {
+    e.preventDefault(); setErr("");
+    try {
+      const r = await postJSON<{ upi_id: string | null }>(`/api/projects/${projectId}/payments`, { upi_id: upi, upi_name: name }, "PUT");
+      onSaved(r.upi_id ? "UPI payments on. Donors can pay from each claim's public page." : "UPI off: claims accept demo pledges only.");
+    } catch (x: any) { setErr(x.message); }
+  }
+  return (
+    <section className="mt-16">
+      <h2 className="font-serif text-3xl">Donations</h2>
+      <p className="text-muted mt-2 mb-5 max-w-[70ch]">Pay on proof: donors fund a claim from its public page by UPI, straight to your account, and get a receipt linked to the verified photos. Leave the UPI ID empty for demo pledges with no real money.</p>
+      {err && <div className="mb-4"><ErrorBox message={err} /></div>}
+      <form onSubmit={save} className="grid md:grid-cols-[1fr_1fr_auto] gap-4 items-end">
+        <div><label className={label} htmlFor="upi">UPI ID</label>
+          <input id="upi" className={input} value={upi} onChange={(e) => setUpi(e.target.value)} placeholder="e.g. greenhands@okaxis" spellCheck={false} /></div>
+        <div><label className={label} htmlFor="upn">Payee name shown to donors</label>
+          <input id="upn" className={input} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Green Hands Foundation" /></div>
+        <button className={btn}>Save</button>
+      </form>
+    </section>
   );
 }

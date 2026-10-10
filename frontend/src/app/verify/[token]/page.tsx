@@ -1,6 +1,7 @@
 "use client";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import FundPanel from "@/components/FundPanel";
 import ReportView from "@/components/ReportView";
 import { api } from "@/lib/api";
 
@@ -24,7 +25,10 @@ export default function VerifyPage() {
       ) : !r ? (
         <p className="text-center text-muted py-20 animate-pulse">Loading verification…</p>
       ) : (
-        <ReportView r={r} isPublic />
+        <>
+          <ReportView r={r} isPublic />
+          <FundPanel token={token} />
+        </>
       )}
     </div>
   );

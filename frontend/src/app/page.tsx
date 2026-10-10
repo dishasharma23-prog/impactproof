@@ -38,6 +38,7 @@ const PLATFORM = [
   { n: "02", title: "Verify", text: "Every photo is fingerprinted on arrival and put through nine independent checks. Each verdict comes with a plain reason, and people resolve what the rules can't." },
   { n: "03", title: "Connect", text: "Verdicts are written onto each asset in Cloudinary as structured metadata. Photos link to claims, sites and before-and-after pairs." },
   { n: "04", title: "Report", text: "Every claim gets an impact brief and a QR code. Donors scan it and check the evidence themselves, faces blurred." },
+  { n: "05", title: "Fund", text: "Donors fund a claim by UPI, straight to the NGO. The money is tied to the proof: held until verified photos support the claim, with a receipt that links to them." },
 ];
 
 export default function LandingPage() {
@@ -200,7 +201,7 @@ export default function LandingPage() {
           <div className="flex flex-wrap items-end justify-between gap-6 mb-[8vh]">
             <div>
               <EditorialLabel n={4}>Platform</EditorialLabel>
-              <EditorialTitle size="lg" lines={["One record,", "four moves."]} em={[1]} className="mt-8" />
+              <EditorialTitle size="lg" lines={["One record,", "five moves."]} em={[1]} className="mt-8" />
             </div>
             <Reveal><p className="ed-mono text-[var(--ed-muted)] max-w-[30ch] text-right hidden md:block">Hover a row to open its record</p></Reveal>
           </div>
@@ -369,6 +370,19 @@ function Preview({ i }: { i: number }) {
         </div>
       ))}
       <p className="ed-mono !text-[10px] text-[var(--ed-faint)] mt-4">Linked to claim 0001 · before/after pair · Library lawn</p>
+    </div>
+  );
+  if (i === 4) return (
+    <div className={frame}>
+      <p className="ed-mono !text-[10px] text-[var(--ed-muted)]">Pay on proof · claim 0001</p>
+      <div className="flex items-end justify-between mt-4"><span className="ed-display text-6xl">₹42,500</span><span className="ed-mono text-[var(--ed-muted)]">38 donors</span></div>
+      {[["UPI", "Asha · ₹500", "confirmed"], ["UPI", "Ravi · ₹1,000", "confirmed"], ["UPI", "Meera · ₹2,000", "to confirm"]].map(([m, k, v]) => (
+        <div key={k} className={line}>
+          <span className="ed-mono !text-[10px] text-[var(--ed-faint)]">{m}</span>
+          <span className="text-[15px]">{k}</span><span className={`ed-mono !text-[10px] ${v === "confirmed" ? "text-[var(--ed-accent)]" : "text-[var(--ed-muted)]"}`}>{v}</span>
+        </div>
+      ))}
+      <p className="ed-mono text-[var(--ed-accent)] mt-5">Released on proof · claim supported by 6 verified photos</p>
     </div>
   );
   return (

@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { EvidenceChain, EvidenceGrid, PhotoRecord, recordNo, SectionHeading } from "@/components/system";
 import { btn, btnGhost, ErrorBox, Loading, StatusTag, Toast } from "@/components/ui";
-import { api, EvidenceLight, fmtDate, postJSON, Support, SUPPORT_COLOR } from "@/lib/api";
+import { api, EvidenceLight, fmtDate, fmtUtc, postJSON, Support, SUPPORT_COLOR } from "@/lib/api";
 
 interface ClaimDetail {
   id: number; text: string; project_id: number; created_at: string; support: Support; verify_url: string;
@@ -65,6 +65,8 @@ export default function ClaimPage() {
           </div>
         </div>
       </section>
+
+      <Funding claimId={claim.id} onChange={flash} />
 
       <section className="mt-16">
         <SectionHeading label="Field evidence">
@@ -164,5 +166,59 @@ function Picker({ claim, onClose, onDone }: { claim: ClaimDetail; onClose: () =>
         </div>
       </div>
     </div>
+  );
+}
+
+interface Donation { id: number; donor_name: string; amount: number; method: string; utr: string | null; status: string; created_at: string; receipt_token: string }
+interface FundingData {
+  summary: { raised: number; donors: number; pending: number; pending_amount: number; released: number; held: number; support_state: string };
+  donations: Donation[]; upi_configured: boolean;
+}
+const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
+
+/** Pay on proof: what donors gave to this claim, and confirming UPI payments as they arrive. */
+function Funding({ claimId, onChange }: { claimId: number; onChange: (m: string) => void }) {
+  const [d, setD] = useState<FundingData | null>(null);
+  const load = useCallback(() => api<FundingData>(`/api/claims/${claimId}/donations`).then(setD).catch(() => {}), [claimId]);
+  useEffect(() => { load(); }, [load]);
+  if (!d) return null;
+  async function decide(x: Donation, decision: string) {
+    await postJSON(`/api/donations/${x.id}/decision`, { decision, reviewer: "NGO staff" });
+    await load(); onChange(decision === "confirmed" ? `Confirmed ${inr(x.amount)} from ${x.donor_name}` : decision === "rejected" ? "Marked as not received" : "Reopened");
+  }
+  const s = d.summary;
+  const proven = s.support_state === "SUPPORTED";
+  return (
+    <section className="mt-16">
+      <SectionHeading label="Pay on proof · donations">
+        {!d.upi_configured && <Link href="/project" className="t-meta text-[11px] uppercase text-review hover:text-paper">Demo mode · add a UPI ID in Project</Link>}
+      </SectionHeading>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div><p className="t-num text-5xl">{inr(s.raised)}</p><p className="t-label mt-2">Confirmed</p></div>
+        <div><p className="t-num text-5xl">{s.donors}</p><p className="t-label mt-2">Donors</p></div>
+        <div className={proven ? "v-CORROBORATED" : "v-NEEDS_REVIEW"}><p className="t-num text-5xl" style={{ color: "var(--v)" }}>{inr(proven ? s.released : s.held)}</p>
+          <p className="t-label mt-2" style={{ color: "var(--v)" }}>{proven ? "Released on proof" : "Held until proven"}</p></div>
+        <div><p className="t-num text-5xl">{s.pending}</p><p className="t-label mt-2">To confirm · {inr(s.pending_amount)}</p></div>
+      </div>
+      <p className="text-sm text-muted mt-4 max-w-[70ch]">Donors pay you directly by UPI from this claim&apos;s public page and get a receipt linked to its verified photos. Confirm each payment when it reaches your account. Money counts as released only while this claim is supported.</p>
+      {d.donations.length > 0 && (
+        <ul className="mt-6 border-t border-line">
+          {d.donations.map((x) => (
+            <li key={x.id} className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto_auto] gap-x-6 gap-y-2 items-center py-3.5 border-b border-line">
+              <div className="min-w-0">
+                <p className="font-medium">{x.donor_name} <span className="t-num ml-2">{inr(x.amount)}</span></p>
+                <p className="t-meta text-[11px] text-faint uppercase">{fmtUtc(x.created_at)} · {x.method === "demo" ? "demo payment" : `UPI ref ${x.utr}`} · <a className="hover:text-paper underline underline-offset-2" href={`/receipt/${x.receipt_token}`} target="_blank" rel="noopener">receipt</a></p>
+              </div>
+              <span className={`t-meta text-[11px] uppercase ${x.status === "confirmed" ? "text-ok" : x.status === "rejected" ? "text-bad" : "text-review"}`}>{x.status === "pending" ? "Awaiting confirmation" : x.status}</span>
+              <div className="flex gap-2 md:justify-end">
+                {x.status !== "confirmed" && <button onClick={() => decide(x, "confirmed")} className={`${btn} !py-1.5 !px-4 !text-[13px]`}>Confirm received</button>}
+                {x.status === "pending" && <button onClick={() => decide(x, "rejected")} className="text-[13px] text-muted hover:text-bad px-2">Not received</button>}
+                {x.status !== "pending" && <button onClick={() => decide(x, "pending")} className="text-[13px] text-muted hover:text-paper px-2">Undo</button>}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
