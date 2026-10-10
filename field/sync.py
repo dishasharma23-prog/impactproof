@@ -399,14 +399,18 @@ class SyncEngine:
             patch = {"value": theirs.get("value"), "sync_state": "synced", "base_version": server_version,
                      "version": server_version, "conflict": None, "updated_at": now_iso(),
                      "sync_reason": f"Kept {theirs.get('device_name') or theirs.get('device_id')}'s value."}
-            new = {**item, **patch}
+            new = {**item, **patch, "text": f"{item.get('key')}: {theirs.get('value')}",
+                   "resolved": {"choice": "theirs", "mine": item.get("value"), "theirs": theirs.get("value"),
+                                "theirs_by": theirs.get("device_name") or theirs.get("device_id"), "at": now_iso()}}
             self.memory.upsert(point_id, new)
             msg = f"Resolved “{item.get('key')}”: kept the other device's value ({theirs.get('value')})."
         else:
             final = item.get("value") if choice == "mine" else value
             new = {**item, "value": final, "sync_state": "pending", "base_version": server_version, "conflict": None,
                    "updated_at": now_iso(), "device_id": self.cfg.device_id, "device_name": self.cfg.label,
-                   "sync_reason": "Resolved; queued to sync." }
+                   "sync_reason": "Resolved; queued to sync.", "text": f"{item.get('key')}: {final}",
+                   "resolved": {"choice": choice, "mine": item.get("value"), "theirs": theirs.get("value"),
+                                "theirs_by": theirs.get("device_name") or theirs.get("device_id"), "at": now_iso()}}
             self.memory.upsert(point_id, new)
             msg = f"Resolved “{item.get('key')}”: {'kept this device’s value' if choice == 'mine' else 'merged to'} {final}."
         self.activity.log("conflict", msg, id=point_id)

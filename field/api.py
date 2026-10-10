@@ -265,6 +265,7 @@ def create_app(cfg: Config, client=None, http=None, embedder=None, start_backgro
         res = memory.search(q, mode, kind_list, limit)
         res["results"] = [summary(r) for r in res["results"]]
         res["offline"] = not engine.connectivity()["online"]
+        res["searched"] = memory.info().get("points")
         return res
 
     @app.get("/api/activity")

@@ -56,6 +56,7 @@ function show(tab) {
   $$(".tab").forEach((s) => (s.hidden = s.id !== `tab-${tab}`));
   try { localStorage.setItem("field.tab", tab); } catch {}
   if (tab === "memory") loadMemory();
+  if (tab === "search") loadSuggest();
   if (tab === "sync") loadSync();
   if (tab === "activity") loadActivity();
 }
@@ -170,11 +171,45 @@ $("#searchForm").addEventListener("submit", async (e) => {
   const mode = document.querySelector("input[name=mode]:checked").value;
   try {
     const r = await api(`/api/search?q=${encodeURIComponent(q)}&mode=${mode}`);
-    $("#searchMeta").textContent = `${r.results.length} result${r.results.length === 1 ? "" : "s"} in ${r.ms} ms, searched on this device${r.offline ? " with no network" : ""}.`;
+    $("#answer").innerHTML = answerCard(r, q);
+    $("#searchMeta").textContent = `${r.results.length} result${r.results.length === 1 ? "" : "s"} · searched ${r.searched ?? "all"} items in this device's Qdrant Edge memory in ${r.ms} ms · ${r.offline ? "no network" : "0 bytes sent: search never uses the network"}.`;
     $("#results").innerHTML = r.results.length ? r.results.map((i, n) => row({ ...i, rank: n + 1 })).join("") : `<li class="empty">Nothing in this device's memory matches.</li>`;
   } catch (x) { toast(x.message); }
 });
 $$("input[name=mode]").forEach((r) => r.addEventListener("change", () => $("#q").value && $("#searchForm").requestSubmit()));
+
+/* The answer card: the best match, stated plainly, with where it came from. Retrieval only, no generation. */
+function answerCard(r, q) {
+  const top = r.results.slice(0, 3).find((i) => i.kind === "fact") || r.results[0];
+  if (!top) return "";
+  const who = top.origin === "local" ? "this device" : top.origin === "hq" ? "ImpactProof HQ" : (top.device_name || "another device");
+  const res = top.resolved;
+  const merged = res ? `<p class="ans-why">Two volunteers disagreed offline: ${esc(res.mine)} (this device) vs ${esc(res.theirs)} (${esc(res.theirs_by || "another device")}). ${res.choice === "merge" ? "Merged" : res.choice === "mine" ? "Kept this device's value" : "Kept theirs"}; nothing was overwritten silently.</p>` : "";
+  const net = `<span class="ans-net">● ${r.offline ? "Answered with no network" : "Answered on this device"} · ${esc(r.ms)} ms</span>`;
+  if (top.kind === "fact") {
+    return `<div class="answer"><div><p class="ans-label">Answer from this device's memory</p>
+      <p class="ans-value">${esc(top.value)}</p><p class="ans-key">${esc(top.key)}</p>
+      <p class="ans-src">From ${esc(who)}${top.site ? ` · ${esc(top.site)}` : ""} · ${esc(ago(top.updated_at || top.created_at))}</p>${merged}${net}</div></div>`;
+  }
+  const at = top.kind === "capture" && top.hq_status_label ? ` · verified at HQ: ${esc(top.hq_status_label)}` : top.kind === "hq_evidence" && top.status_label ? ` · ${esc(top.status_label)} at HQ` : "";
+  return `<div class="answer">${top.image_url ? `<img class="ans-img" src="${esc(top.image_url)}" alt="">` : ""}
+    <div><p class="ans-label">Best match in this device's memory</p>
+    <p class="ans-title">${esc(top.title || top.text || "")}</p>
+    ${top.text && top.text !== top.title ? `<p class="ans-key">${esc(top.text)}</p>` : ""}
+    <p class="ans-src">${esc(KIND[top.kind] || top.kind)} from ${esc(who)}${top.site ? ` · ${esc(top.site)}` : ""} · ${esc(ago(top.updated_at || top.created_at))}${at}</p>${net}</div></div>`;
+}
+
+/* One-tap questions built from what this device knows, so a search is always a tap away. */
+async function loadSuggest() {
+  const facts = await api("/api/items?kind=fact").catch(() => []);
+  const notes = await api("/api/items?kind=note").catch(() => []);
+  const qs = [...facts.slice(0, 2).map((f) => `${f.key}?`), ...(notes.length ? ["what needs fixing?"] : []), "show me the cleanup photos"];
+  $("#suggest").innerHTML = [...new Set(qs)].slice(0, 4).map((x) => `<button type="button" class="chip-btn" data-q="${esc(x)}">${esc(x)}</button>`).join("");
+}
+$("#suggest").addEventListener("click", (e) => {
+  const q = e.target.dataset && e.target.dataset.q; if (!q) return;
+  $("#q").value = q; $("#searchForm").requestSubmit();
+});
 
 /* ---------------- memory ---------------- */
 async function loadMemory() {
